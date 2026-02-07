@@ -12,12 +12,18 @@ class ImageParser(HTMLParser):
     
     def handle_starttag(self, tag, attrs):
         attrs_dict = dict(attrs)
-        if tag == 'img' and 'src' in attrs_dict:
+        if tag == 'img' and 'src' in attrs_dict and is_target(attrs_dict['src']):
             img_url = urljoin(self.base_url, attrs_dict['src'])
             self.images.append(img_url)
         elif tag == 'a' and 'href' in attrs_dict:
             link_url = urljoin(self.base_url, attrs_dict['href'])
             self.links.append(link_url)
+
+def is_target(url):
+    path = urlparse(url).path
+    extension = os.path.splitext(path)[1]
+    target = ('.jpg', '.jpeg', '.png', '.gif', '.bmp')
+    return extension in target
 
 def find_images(url):
     try:
@@ -26,17 +32,6 @@ def find_images(url):
         parser = ImageParser(url)
         parser.feed(response.text)
         return parser.images
-    except Exception as e:
-        print(f"Error fetching {url}: {e}")
-        return []
-
-def find_links(url):
-    try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        parser = ImageParser(url)
-        parser.feed(response.text)
-        return parser.links
     except Exception as e:
         print(f"Error fetching {url}: {e}")
         return []
@@ -53,8 +48,9 @@ def save_image(url, dst_path):
         print(f"Error saving {url}: {e}")
 
 def main():
-    url = 'https://www.python.org'
-    images = find_images(url)
+    depth = 5
+    url2 = 'https://photohito.com/'
+    images = find_images(url2)
     
     os.makedirs('./data', exist_ok=True)
     for idx, img_url in enumerate(images[:5]):
@@ -64,4 +60,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
