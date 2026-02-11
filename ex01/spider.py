@@ -30,13 +30,28 @@ class ImageParser(HTMLParser):
         target = ('.jpg', '.jpeg', '.png', '.gif', '.bmp')
         return extension in target
     
+    def get_unique_filename(self, dst_folder, filename):
+        dst_path = os.path.join(dst_folder, filename)
+        if not os.path.exists(dst_path):
+            return dst_path
+        
+        name, ext = os.path.splitext(filename)
+        counter = 1
+        while True:
+            new_filename = f"{name}_{counter}{ext}"
+            new_path = os.path.join(dst_folder, new_filename)
+            if not os.path.exists(new_path):
+                return new_path
+            counter += 1
+    
     def save_images(self, dst_folder):
         for image in self.images:
             img_url = urljoin(self.base_url, image)
             try:
                 response = requests.get(img_url, timeout=5)
                 response.raise_for_status()
-                dst_path = os.path.join(dst_folder, self.get_filename(image))
+                filename = self.get_filename(image)
+                dst_path = self.get_unique_filename(dst_folder, filename)
                 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
                 with open(dst_path, 'wb') as f:
                     f.write(response.content)
