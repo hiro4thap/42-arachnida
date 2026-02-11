@@ -50,25 +50,22 @@ class ParserService:
        self.dst_path = dst_path
        self.depth = depth
 
-   def save(self):
-       print(f"base_url {self.base_url}")
-       print(f"dst_path {self.dst_path}")
-       print(f"depth {self.depth}")
-       try:
-           response = requests.get(self.base_url, timeout=5)
-           response.raise_for_status()
-           parser = ImageParser(self.base_url)
-           parser.feed(response.text)
-           parser.save_images(self.dst_path)
-       except Exception as e:
-           print(f"Error fetching {self.base_url}: {e}")
+   def save_images(self):
+        try:
+            response = requests.get(self.base_url, timeout=5)
+            response.raise_for_status()
+            parser = ImageParser(self.base_url)
+            parser.feed(response.text)
+            parser.save_images(self.dst_path)
+        except Exception as e:
+            print(f"Error fetching {self.base_url}: {e}")
 
 def main():
     depth = 5
     url = 'https://photohito.com/'
     os.makedirs('./data', exist_ok=True)
-    service = ParserService(url, './data/', 5)
-    service.save()
+    service = ParserService(url, './data/', depth)
+    service.save_images()
     
 if __name__ == "__main__":
     main()
