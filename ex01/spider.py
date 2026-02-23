@@ -1,5 +1,7 @@
 import requests
 import os
+import argparse
+from collections import deque
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
@@ -7,7 +9,7 @@ class ImageParser(HTMLParser):
     def __init__(self, base_url):
         super().__init__()
         self.images = []
-        self.parsers = []
+        self.links = []
         self.base_url = base_url
     
     def handle_starttag(self, tag, attrs):
@@ -17,8 +19,7 @@ class ImageParser(HTMLParser):
             self.images.append(img_url)
         elif tag == 'a' and 'href' in attrs_dict:
             link_url = urljoin(self.base_url, attrs_dict['href'])
-            parser = ImageParser(link_url)
-            self.parsers.append(parser)
+            self.links.append(link_url)
     
     def get_filename(self, url):
         path = urlparse(url).path
@@ -60,26 +61,57 @@ class ImageParser(HTMLParser):
                 print(f"Error saving {img_url}: {e}")
 
 class ParserService:
-   def __init__(self, base_url, dst_path, depth = 5):
-       self.base_url = base_url
-       self.dst_path = dst_path
-       self.depth = depth
+    def __init__(self, base_url, dst_path, max_depth=0, recursive=False):
+        self.base_url = base_url
+        self.dst_path = dst_path
+        self.max_depth = max_depth
+        self.recursive = recursive
 
-   def save_images(self):
-        try:
-            response = requests.get(self.base_url, timeout=5)
-            response.raise_for_status()
-            parser = ImageParser(self.base_url)
-            parser.feed(response.text)
-            parser.save_images(self.dst_path)
-        except Exception as e:
-            print(f"Error fetching {self.base_url}: {e}")
+    def save_images(self):
+        queue = deque([(self.base_url, 0)])
+        visited = set([self.base_url])
+
+        while queue:
+            current_url, depth = queue.popleft()
+            if depth > self.max_depth:
+                continue
+
+            try:
+                response = requests.get(current_url, timeout=5)
+                response.raise_for_status()
+                parser = ImageParser(current_url)
+                parser.feed(response.text)
+                parser.save_images(self.dst_path)
+
+                if self.recursive and depth < self.max_depth:
+                    for link in parser.links:
+                        parsed = urlparse(link)
+                        if parsed.scheme not in ("http", "https"):
+                            continue
+                        if link in visited:
+                            continue
+                        visited.add(link)
+                        queue.append((link, depth + 1))
+            except Exception as e:
+                print(f"Error fetching {current_url}: {e}")
 
 def main():
-    depth = 5
-    url = 'https://photohito.com/'
-    os.makedirs('./data', exist_ok=True)
-    service = ParserService(url, './data/', depth)
+    parser = argparse.ArgumentParser(description="Download images from a URL.")
+    parser.add_argument("url", help="URL to fetch images from")
+    parser.add_argument("-r", "--recursive", action="store_true", help="recursively download images")
+    parser.add_argument("-l", "--level", type=int, help="maximum recursion depth")
+    parser.add_argument("-p", "--path", default="./data/", help="download path (default: ./data/)")
+    args = parser.parse_args()
+
+    if args.level is not None and not args.recursive:
+        parser.error("-l requires -r")
+
+    max_depth = 0
+    if args.recursive:
+        max_depth = args.level if args.level is not None else 5
+
+    os.makedirs(args.path, exist_ok=True)
+    service = ParserService(args.url, args.path, max_depth=max_depth, recursive=args.recursive)
     service.save_images()
     
 if __name__ == "__main__":
