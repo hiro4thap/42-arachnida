@@ -61,7 +61,17 @@ class ImageParser(HTMLParser):
                 print(f"Error saving {img_url}: {e}")
 
 class ParserService:
-    def __init__(self, base_url, dst_path, max_depth=0, recursive=False):
+    def __init__(self, base_url, dst_path, max_depth, recursive=False):
+        parsed = urlparse(base_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("base_url must be a valid http(s) URL")
+        if not isinstance(max_depth, int) or isinstance(max_depth, bool) or max_depth < 0:
+            raise ValueError("max_depth must be a non-negative integer")
+        if not isinstance(dst_path, str) or not dst_path.strip():
+            raise ValueError("dst_path must be a non-empty path string")
+        if not os.path.isdir(dst_path):
+            raise ValueError("dst_path must be an existing directory")
+
         self.base_url = base_url
         self.dst_path = dst_path
         self.max_depth = max_depth
