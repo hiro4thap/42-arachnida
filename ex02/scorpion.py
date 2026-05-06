@@ -23,6 +23,9 @@ _TAGS = {
     0x010F: "Make",
     0x0110: "Model",
     0x0112: "Orientation",
+    0x011A: "XResolution",
+    0x011B: "YResolution",
+    0x0128: "ResolutionUnit",
     0x0131: "Software",
     0x0132: "DateTime",
     0x8769: "ExifIFDPointer",
@@ -247,8 +250,8 @@ def _extract_exif(path: str) -> Tuple[Dict[str, Any], Optional[str]]:
     except OSError as e:
         return {}, f"read error: {e}"
 
-    if ext in (".png", ".gif", ".bmp"):
-        return {}, "EXIF not supported for this format without external libraries"
+    #if ext in (".png", ".gif", ".bmp"):
+    #    return {}, "EXIF not supported for this format without external libraries"
 
     app1 = _extract_exif_segment(data)
     if not app1:
